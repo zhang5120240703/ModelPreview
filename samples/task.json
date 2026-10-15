@@ -1,0 +1,10 @@
+{
+  "task_id": "b70283ee73e44cce801694b405535942",
+  "status": "succeeded",
+  "progress": 100.0,
+  "model_url": "http://127.0.0.1:8000/api/v1/models/b70283ee73e44cce801694b405535942/file",
+  "error": null,
+  "provider": "mock",
+  "is_mock": true,
+  "status_url": "/api/v1/reconstructions/b70283ee73e44cce801694b405535942"
+}

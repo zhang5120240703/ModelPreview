@@ -1,0 +1,6 @@
+{
+  "name": "GrassCraft.PlayModeTests",
+  "references": ["GrassCraft.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

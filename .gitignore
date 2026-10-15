@@ -84,6 +84,16 @@ mono_crash.*
 # Crashlytics generated file
 crashlytics-build.properties
 
+# GrassCraft backend local state and credentials
+backend/.venv/
+backend/.env
+backend/data/
+backend/.pytest_cache/
+**/__pycache__/
+*.pyc
+/Verification/
+/TestResults/
+
 # TestRunner generated files
 InitTestScene*.unity*
 

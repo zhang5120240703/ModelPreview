@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>草编三维模型 · 中文测试台</title>
+  <style>
+    :root{color-scheme:light;font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;color:#29362f;background:#f4f3ed}
+    *{box-sizing:border-box}body{margin:0}main{max-width:1100px;margin:auto;padding:48px 24px}
+    .eyebrow{font-size:13px;letter-spacing:2px;color:#647563}h1{font-size:32px;margin:14px 0}h2{font-size:19px;margin:0 0 20px}
+    p{color:#657168;line-height:1.8}.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:30px}
+    section{background:#fff;border:1px solid #dedfd4;border-radius:16px;padding:28px}
+    label{display:block;font-size:14px;margin:18px 0 9px;font-weight:600}input,button,select{font:inherit}
+    #source-mode{width:100%;padding:10px;border:1px solid #c7cec3;border-radius:8px;margin-bottom:10px}.divider{border-top:1px solid #e9e9e2;margin-top:24px;padding-top:4px}
+    input[type=text],input[type=url]{width:100%;padding:12px;border:1px solid #c7cec3;border-radius:8px;background:#fafbf7}
+    input[type=file]{width:100%;font-size:14px}input::file-selector-button{font:inherit;background:#ebefe6;border:0;border-radius:6px;padding:10px;cursor:pointer}
+    button,.download{border:0;border-radius:8px;padding:12px 17px;cursor:pointer;display:inline-block;text-decoration:none;background:#365744;color:white;font-size:14px}
+    button.secondary{background:#edf0e8;color:#365744}button:disabled{opacity:.5;cursor:wait}button:focus-visible,a:focus-visible{outline:3px solid #b89755;outline-offset:3px}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.note{font-size:13px;margin:10px 0;line-height:1.8;color:#657168}
+    .badge{display:inline-block;padding:7px 12px;border-radius:40px;background:#e9efe3;color:#385c3c;font-size:13px}
+    .status{padding:18px 0;border-bottom:1px solid #e9e9e2;margin-bottom:12px}.state{font-size:26px;font-weight:600;margin:8px 0}
+    #error{background:#fff1e9;color:#9b4128;border:1px solid #e2b49f;padding:13px;border-radius:8px;margin-top:20px;white-space:pre-wrap}
+    #photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}#photos img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+    .photo{border:1px solid #e1e5da;border-radius:8px;padding:9px;width:135px}.photo select{font:inherit;font-size:13px;width:100%;margin-top:8px;padding:5px}.photo-name{font-size:12px;overflow-wrap:anywhere;color:#657168;margin-top:5px}
+    progress{width:100%;accent-color:#365744;height:9px}.footer{font-size:13px;color:#7b8177;margin-top:25px}
+    details{margin-top:24px;font-size:13px;color:#657168}pre{overflow:auto;background:#f4f5ee;padding:12px;line-height:1.7}
+    [hidden]{display:none!important}@media(max-width:760px){main{padding:26px 16px}.grid{grid-template-columns:1fr}h1{font-size:26px}section{padding:22px}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">草编工艺品数字化 · 本地联调</div>
+  <h1>三维模型中文测试台</h1>
+  <p>上传同一件作品的不同角度照片，创建任务并获取模型地址，再交给 Unity 预览。</p>
+  <span class="badge" id="provider">正在检查服务……</span>
+  <p class="note" id="provider-help" role="status"></p>
+  <div class="grid">
+    <section aria-labelledby="upload-title">
+      <h2 id="upload-title">① 上传图片并创建任务</h2>
+      <div id="source-options" hidden>
+        <label for="source-mode">照片来源</label>
+        <select id="source-mode"><option value="local">从电脑选择照片</option><option value="github">使用 GitHub Pages 图片链接</option></select>
+      </div>
+      <div id="local-source">
+      <label for="images">选择 1–__MAX_IMAGES__ 张照片</label>
+      <input id="images" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" multiple hidden aria-describedby="image-help">
+      <button id="choose-images" type="button" class="secondary">选择照片</button>
+      <span id="file-count" class="note">尚未选择照片</span>
+      <p class="note" id="image-help">支持 JPG、JPEG、PNG，每张最多 __MAX_IMAGE_MB__ MB。选择后请为照片标记拍摄视角。</p>
+      <div id="photos" aria-label="已选择的照片"></div>
+      </div>
+      <div id="github-source" hidden>
+        <p class="note">照片先发布到 GitHub Pages，后端继续在本机运行，无需配置本机公网地址。填写图片直链；必须有正面，其余视角可留空。</p>
+        <label for="github-base">图片目录地址（可选，用于自动填写）</label>
+        <input id="github-base" type="url" placeholder="https://用户名.github.io/仓库名/images/" autocomplete="off">
+        <div class="actions"><button id="fill-links" type="button" class="secondary">按六个面填写 .jpg 链接</button></div>
+        <p class="note">默认文件名为 front.jpg、back.jpg、left.jpg、right.jpg、top.jpg、bottom.jpg；PNG 图片请将对应链接改为 .png。照片发布后公开可见。</p>
+        <div id="github-links"></div>
+        <div class="actions"><button id="check-links" type="button" class="secondary">检查图片链接（不生成）</button></div>
+        <p id="links-status" class="note" role="status">检查只下载并校验图片，不调用混元生成、不消耗建模额度。</p>
+      </div>
+      <div class="actions"><button id="upload" type="button" disabled>上传并开始生成</button></div>
+      <label for="lookup">已有任务？输入任务编号</label>
+      <input id="lookup" type="text" placeholder="粘贴已创建任务的编号" autocomplete="off">
+      <div class="actions">
+        <button id="follow" type="button" class="secondary">查询并等待结果</button>
+        <button id="stop" type="button" class="secondary" hidden>停止等待</button>
+      </div>
+      <p class="note">每 3 秒查询一次。停止等待不会取消服务器上的建模任务。</p>
+    </section>
+    <section aria-labelledby="result-title">
+      <h2 id="result-title">② 获取模型并在 Unity 中预览</h2>
+      <div class="status" role="status" aria-live="polite">
+        <div class="state" id="state">等待创建任务</div>
+        <p class="note" id="status-note">尚未上传图片。无需付费即可使用模拟模式测试完整流程。</p>
+        <progress id="progress" max="100" hidden aria-label="模型生成进度"></progress>
+      </div>
+      <label for="task-id">任务编号</label><input id="task-id" type="text" readonly placeholder="创建任务后自动显示">
+      <label for="model-url">模型下载地址</label><input id="model-url" type="url" readonly placeholder="模型生成成功后自动显示">
+      <div class="actions">
+        <button id="copy-id" type="button" class="secondary" disabled>复制任务编号</button>
+        <button id="copy-url" type="button" class="secondary" disabled>复制模型地址</button>
+        <a id="download" class="download" hidden>下载模型</a>
+      </div>
+      <p class="note">在 Unity 中打开“草编模型测试 → 创建或打开预览场景”，进入运行模式。填入任务编号，点击“查询并加载”；也可粘贴模型地址后点击“加载模型”。</p>
+      <p class="note" id="mock-note">模拟模式只生成带纹理的测试立方体，不会重建上传照片中的真实作品。</p>
+      <details><summary>查看原始接口响应（供开发联调）</summary><pre id="raw">暂无数据</pre></details>
+    </section>
+  </div>
+  <div id="error" role="alert" hidden></div>
+  <p class="footer">本页使用当前服务地址访问接口。接口字段与状态代码保持原协议，页面统一显示中文。</p>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const names = {queued:'排队中',processing:'正在生成模型',succeeded:'模型已生成',failed:'模型生成失败'};
+  const maxBytes = __MAX_IMAGE_MB__ * 1024 * 1024;
+  const maxImages = __MAX_IMAGES__;
+  const viewNames = {front:'正面',back:'背面',left:'左侧',right:'右侧',top:'顶面',bottom:'底面'};
+  const defaultViews = ['front','back','left','right','top','bottom'].slice(0,maxImages);
+  let timer = null, active = null, generation = 0, started = 0, previews = [], chosenViews = [];
+  let service = null, configured = false;
+  for (const view of defaultViews) {
+    const label=document.createElement('label'); label.htmlFor='link-'+view; label.textContent=viewNames[view]+'图片链接';
+    const input=document.createElement('input'); input.id='link-'+view; input.type='url'; input.placeholder='https://用户名.github.io/仓库名/images/'+view+'.jpg';
+    input.addEventListener('input',()=>{$('links-status').textContent='链接已修改，请重新检查。';});
+    $('github-links').append(label,input);
+  }
+  function error(message) { $('error').textContent = message; $('error').hidden = !message; }
+  function busy(value) {
+    $('upload').disabled = value || !configured; $('follow').disabled = value; $('stop').hidden = !value;
+    $('choose-images').disabled = value;
+    $('source-mode').disabled=value; $('github-base').disabled=value; $('fill-links').disabled=value;
+    $('check-links').disabled=value || !service?.public_image_links_supported;
+    $('github-links').querySelectorAll('input').forEach(input=>{input.disabled=value;});
+    $('photos').querySelectorAll('select').forEach(select => { select.disabled = value; });
+  }
+  function stop() {
+    generation++; clearTimeout(timer); timer = null;
+    if (active) active.abort(); active = null; busy(false);
+  }
+  async function request(url, options = {}) {
+    const controller = new AbortController(); active = controller;
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    try {
+      const response = await fetch(url, {...options,signal:controller.signal});
+      let data;
+      try { data = await response.json(); } catch { throw new Error('服务器返回的数据格式不正确。'); }
+      if (!response.ok) {
+        const message = typeof data.detail === 'string' && /[\u3400-\u9fff]/.test(data.detail)
+          ? data.detail : '请求未成功，请检查图片、任务编号和服务状态。';
+        throw new Error(message + '（HTTP ' + response.status + '）');
+      }
+      return data;
+    } finally { clearTimeout(timeout); if (active === controller) active = null; }
+  }
+  function display(task) {
+    $('state').textContent = names[task.status] || '未知任务状态';
+    $('task-id').value = task.task_id || ''; $('lookup').value = task.task_id || '';
+    $('model-url').value = task.model_url || '';
+    $('copy-id').disabled = !task.task_id; $('copy-url').disabled = !task.model_url;
+    $('status-note').textContent = task.is_mock
+      ? '当前是模拟测试任务，结果为测试立方体，不代表真实 AI 重建质量。'
+      : '当前是 AI 建模任务，实际生成时间与平台排队情况有关。';
+    $('mock-note').hidden = !task.is_mock;
+    $('progress').hidden = typeof task.progress !== 'number';
+    if (typeof task.progress === 'number') $('progress').value = task.progress;
+    $('raw').textContent = JSON.stringify(task, null, 2);
+    const model = task.model_url ? new URL(task.model_url, location.origin) : null;
+    const downloadable = model && ['http:','https:'].includes(model.protocol);
+    $('download').hidden = !downloadable;
+    if (downloadable) $('download').href = model.href;
+    if (task.status === 'failed') error(task.error || '模型生成失败，请检查服务器日志。');
+  }
+  async function poll(id, version) {
+    if (version !== generation) return;
+    if (Date.now()-started > 1900000) {
+      stop(); error('等待已超过 1900 秒，可使用原任务编号继续查询。'); return;
+    }
+    try {
+      const task = await request('/api/v1/reconstructions/' + encodeURIComponent(id));
+      if (version !== generation) return;
+      display(task);
+      if (['succeeded','failed'].includes(task.status)) { busy(false); return; }
+      timer = setTimeout(() => poll(id, version), 3000);
+    } catch (exception) { failure(exception, version); }
+  }
+  function failure(exception, version) {
+    if (version !== generation) return;
+    busy(false);
+    error(exception.name === 'AbortError' ? '网络请求超时，请检查连接后重新查询。' :
+      exception instanceof TypeError ? '无法连接后端，请检查服务是否启动及网络连接。' : exception.message);
+  }
+  $('choose-images').addEventListener('click', () => $('images').click());
+  $('source-mode').addEventListener('change',()=>{
+    const github=$('source-mode').value==='github';
+    $('local-source').hidden=github; $('github-source').hidden=!github;
+    $('upload').textContent=github ? '使用图片链接开始生成（计费）' : '上传并开始生成'; error('');
+  });
+  $('fill-links').addEventListener('click',()=>{
+    try {
+      const base=new URL($('github-base').value.trim());
+      if(base.protocol!=='https:' || !/^[a-z0-9-]+\.github\.io$/i.test(base.hostname) || base.username || base.password || base.search || base.hash || (base.port && base.port!=='443')) throw new Error();
+      base.pathname=base.pathname.replace(/\/?$/,'/');
+      for(const view of defaultViews) $('link-'+view).value=new URL(view+'.jpg',base).href;
+      $('links-status').textContent='六个链接已填写，先检查图片是否已发布。'; error('');
+    } catch { error('请填写 GitHub Pages 的 HTTPS 图片目录地址，例如以 /images/ 结尾的地址。'); }
+  });
+  function publicImageBody(){
+    const selected=defaultViews.map(view=>({view,url:$('link-'+view).value.trim()})).filter(item=>item.url);
+    if(!selected.some(item=>item.view==='front')) throw new Error('请至少填写一张正面图片链接。');
+    return {image_urls:selected.map(item=>item.url),views:selected.map(item=>item.view)};
+  }
+  $('check-links').addEventListener('click',async()=>{
+    let body; try { body=publicImageBody(); } catch(exception){error(exception.message);return;}
+    stop(); error(''); busy(true); const version=generation;
+    $('links-status').textContent='正在检查图片链接……';
+    try {
+      const result=await request('/api/v1/image-links/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(version!==generation)return;
+      $('links-status').textContent=result.image_count+' 张图片检查通过。'+result.message; busy(false);
+    } catch(exception){if(version===generation)$('links-status').textContent='检查未通过，没有创建建模任务。';failure(exception,version);}
+  });
+  $('images').addEventListener('change', () => {
+    $('file-count').textContent = $('images').files.length ? '已选择 ' + $('images').files.length + ' 张照片' : '尚未选择照片';
+    previews.forEach(URL.revokeObjectURL); previews = []; $('photos').replaceChildren();
+    error($('images').files.length>maxImages ? '最多只能上传 ' + maxImages + ' 张照片，请重新选择。' : '');
+    const files = Array.from($('images').files).slice(0,maxImages);
+    chosenViews = defaultViews.slice(0,files.length);
+    for (const [index,file] of files.entries()) {
+      const card = document.createElement('div'); card.className = 'photo';
+      const img = document.createElement('img'); const url = URL.createObjectURL(file);
+      previews.push(url); img.src = url; img.alt = '所选照片：' + file.name; card.append(img);
+      const name = document.createElement('div'); name.className = 'photo-name'; name.textContent = file.name; card.append(name);
+      const select = document.createElement('select'); select.setAttribute('aria-label','第 ' + (index+1) + ' 张照片视角');
+      for (const view of defaultViews) {
+        const option = document.createElement('option'); option.value = view; option.textContent = viewNames[view]; select.append(option);
+      }
+      select.value = chosenViews[index]; select.addEventListener('change', () => { chosenViews[index] = select.value; });
+      card.append(select); $('photos').append(card);
+    }
+  });
+  $('upload').addEventListener('click', async () => {
+    if(service?.public_image_links_supported && $('source-mode').value==='github') {
+      let body; try { body=publicImageBody(); } catch(exception){error(exception.message);return;}
+      stop(); error(''); busy(true); const version=generation; started=Date.now();
+      $('state').textContent='正在校验公网图片并提交……';
+      try {
+        const task=await request('/api/v1/reconstructions/from-urls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(version!==generation)return;
+        display(task); timer=setTimeout(()=>poll(task.task_id,version),1000);
+      } catch(exception){failure(exception,version);} return;
+    }
+    const files = Array.from($('images').files);
+    if (files.length < (service?.min_images || 1) || files.length > maxImages) { error('请选择 ' + (service?.min_images || 1) + '–' + maxImages + ' 张照片。'); return; }
+    if (service?.provider === 'hunyuan' && files.length>1 && !service.public_images_configured) {
+      error('当前未配置公网 HTTPS 图片地址。请先上传一张正面图，或配置 HUNYUAN_IMAGE_BASE_URL 后重启后端。'); return;
+    }
+    if (new Set(chosenViews).size !== files.length || !chosenViews.includes('front')) {
+      error('请为每张照片选择不同视角，并保留一张正面图。'); return;
+    }
+    if (files.some(file => !/\.(jpe?g|png)$/i.test(file.name) || !['image/jpeg','image/png'].includes(file.type))) {
+      error('只支持 JPG、JPEG、PNG 图片，请检查文件格式。'); return;
+    }
+    if (files.some(file => file.size > maxBytes)) { error('单张照片不能超过 __MAX_IMAGE_MB__ MB。'); return; }
+    stop(); error(''); busy(true); const version = generation; started = Date.now();
+    $('state').textContent = '正在上传图片……';
+    const form = new FormData(); files.forEach(file => form.append('images', file));
+    if (service?.provider === 'hunyuan' || service?.provider === 'mock') chosenViews.forEach(view => form.append('views',view));
+    try {
+      const task = await request('/api/v1/reconstructions', {method:'POST',body:form});
+      if (version !== generation) return;
+      display(task); timer = setTimeout(() => poll(task.task_id, version), 1000);
+    } catch (exception) { failure(exception, version); }
+  });
+  $('follow').addEventListener('click', () => {
+    const id = $('lookup').value.trim();
+    if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id)) { error('请输入有效的任务编号。'); return; }
+    stop(); error(''); busy(true); started = Date.now(); poll(id, generation);
+  });
+  $('stop').addEventListener('click', () => { stop(); $('status-note').textContent = '已停止等待，服务器仍会继续处理原任务。'; });
+  async function copy(id) {
+    try { await navigator.clipboard.writeText($(id).value); error(''); }
+    catch { $(id).focus(); $(id).select(); error('内容已选中，请使用系统复制操作。'); }
+  }
+  $('copy-id').addEventListener('click', () => copy('task-id'));
+  $('copy-url').addEventListener('click', () => copy('model-url'));
+  fetch('/health').then(response => {
+    if (!response.ok) throw new Error(); return response.json();
+  }).then(data => {
+    service = data; configured = data.provider_ready !== false;
+    $('source-options').hidden=!data.public_image_links_supported;
+    $('provider').textContent = data.provider === 'mock' ? '服务正常 · 免费模拟测试模式' :
+      data.provider === 'hunyuan' ? '腾讯官方混元 3D · ' + (configured ? '密钥已配置' : '等待填写密钥') :
+      data.provider === 'meshy' ? 'Meshy · 真实 AI 建模模式' : '扩展服务模式';
+    $('mock-note').hidden = data.provider !== 'mock';
+    if (data.provider === 'hunyuan') {
+      $('provider-help').textContent = configured
+        ? '使用 TokenHub ' + data.model + '，带颜色纹理；PBR ' + (data.enable_pbr ? '已开启' : '未开启') +
+          '。开始生成将创建真实计费任务。' + (data.public_images_configured ? '本地上传的多图已配置公网图片入口，请确认腾讯可访问。' : '本地上传多图需公网入口；也可切换照片来源，使用 GitHub Pages 图片链接。')
+        : '请在项目根目录运行 scripts/configure-hunyuan.ps1，隐藏输入并保存 Key，然后重启后端。密钥不要填到本网页。';
+      $('image-help').textContent = '支持 JPG、JPEG、PNG，每张最多 __MAX_IMAGE_MB__ MB，宽高为 129–4999 像素。支持前后左右上下六个面，逐张标记正面、背面、左侧、右侧、顶面或底面。';
+      $('status-note').textContent = '等待你手动提交照片。混元真实生成会消耗腾讯账户额度，当前尚未创建任务。';
+    } else if (data.provider === 'mock') $('provider-help').textContent = '当前为免费模拟模式，结果是测试立方体。';
+    busy(false);
+  }).catch(() => { configured=false; busy(false); $('provider').textContent = '服务连接异常，请检查后端'; });
+  window.addEventListener('beforeunload', () => { stop(); previews.forEach(URL.revokeObjectURL); });
+})();
+</script>
+</body>
+</html>
