@@ -59,7 +59,7 @@ def test_invalid_link_never_fetched_or_enqueued(tmp_path,bad_url):
     assert response.status_code==422 and not calls and not app.state.store.pending()
 
 
-@pytest.mark.parametrize('mode',['redirect','not-found','html','damaged','large','timeout'])
+@pytest.mark.parametrize('mode',['redirect','not-found','html','damaged','large','timeout','lfs-pointer'])
 def test_unusable_link_does_not_create_paid_task(tmp_path,mode):
     calls=[]
     def handler(request):
@@ -69,10 +69,12 @@ def test_unusable_link_does_not_create_paid_task(tmp_path,mode):
         if mode=='html':return httpx.Response(200,text='<html>not a photo</html>',headers={'Content-Type':'text/html'})
         if mode=='damaged':return httpx.Response(200,content=b'invalid',headers={'Content-Type':'image/png'})
         if mode=='large':return httpx.Response(200,content=b'x'*(4*1024*1024+1),headers={'Content-Type':'image/png'})
+        if mode=='lfs-pointer':return httpx.Response(200,content=b'version https://git-lfs.github.com/spec/v1\noid sha256:example\nsize 100000\n',headers={'Content-Type':'image/png'})
         raise httpx.ReadTimeout('test',request=request)
     _,app=app_for(tmp_path,handler)
     response=TestClient(app).post('/api/v1/reconstructions/from-urls',json={'image_urls':URLS[:1]})
     assert response.status_code==422 and not app.state.store.pending()
+    if mode=='lfs-pointer': assert 'Git LFS' in response.json()['detail']
     assert len(calls)==1
 
 

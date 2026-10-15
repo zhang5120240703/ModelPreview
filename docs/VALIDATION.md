@@ -6,7 +6,7 @@
 
 | 检查 | 实际结果 / 证据 |
 | --- | --- |
-| Python 自动化测试 | 67 passed（包含六图完整流程、顶底面映射、重复/非法视角、七张拒绝、其他 Provider 四张限制，以及 Pages URL 校验、无 Key 检查、下载异常及 URL 任务全流程）；见 test-results/backend-pytest.txt 与 backend.xml |
+| Python 自动化测试 | 68 passed（包含六图完整流程、顶底面映射、重复/非法视角、七张拒绝、其他 Provider 四张限制，以及 Pages URL 校验、无 Key 检查、下载异常、LFS 指针拦截及 URL 任务全流程）；见 test-results/backend-pytest.txt 与 backend.xml |
 | 真实 HTTP 服务 | uvicorn 在 127.0.0.1:8000 启动，smoke.py 上传、轮询并下载 2140 字节的自包含 GLB；响应见 ../samples/task.json |
 | Unity 脚本编译 | Unity 6.4 批处理编译成功，生成可打开的 GrassCraftPreview 场景 |
 | Unity PlayMode | 2 passed / 0 failed，见 test-results/unity-playmode.xml |
@@ -21,6 +21,7 @@
 | 六面浏览器流程 | 8002 隔离 Mock 服务：六图选取、六种默认标注、上传、自动轮询至成功，见 test-results/six-view-mock.png。实际 8000 混元服务已重启并确认 max_images=6，仅选图检查未提交，见 test-results/six-view-hunyuan.png |
 | 混元真实单图任务 | 用户自行提交的任务 7e444447767d4671a8928a9e02647117 已 succeeded；GLB 已通过后端校验并保存，31893320 字节。本次检查未新增云端任务，未检查账单和重建视觉质量 |
 | GitHub Pages 链接入口 | 8002 隔离服务使用模拟图片和云端响应，验证六链接自动填写、检查不创建任务、创建后自动轮询成功，见 test-results/github-pages-simulated.png。未访问真实 Pages 照片或新增真实混元任务。发布模板和 ZIP 已准备，用户尚未开通 Pages |
+| Pages 实际图片故障 | 用户已开通 ModelPreview Pages。新提交 3959114d 尚在部署；新路径 front.jpg 为 404，旧 docs 路径的 front.jpg/botton.jpg 返回 HTTP 200 但实际是 131 字节 Git LFS 指针。已在本地为照片目录禁用 LFS，修正 bottom.jpg，并重新暂存六张实际 JPEG；尚未替用户提交和推送这次修复 |
 
 Unity 验证使用 `Verification/UnityProject` 隔离副本，避免改动当前 Editor 场景。首次官方包缓存写入遭遇 EBADF，验证副本改用从 Unity 官方 registry 下载的相同 glTFast 6.15.1 包作为 embedded package；主工程仍使用 registry 依赖，之后已正常解析安装。隔离副本不属于交付源码，也不提交。
 

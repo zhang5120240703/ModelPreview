@@ -44,6 +44,8 @@ class GitHubImages:
                         data.extend(chunk)
                         if len(data)>max_image_mb*1024*1024:
                             raise ValueError(f'GitHub Pages 单张图片超过 {max_image_mb} MB，请压缩后重新发布')
+                    if data.startswith(b'version https://git-lfs.github.com/spec/v1'):
+                        raise ValueError('图片链接返回的是 Git LFS 指针，无法用于 GitHub Pages。请取消该照片目录的 LFS 管理，重新提交真正的图片并等待发布；本次未创建任务')
                     return bytes(data),suffix
             try:
                 async with asyncio.timeout(25):

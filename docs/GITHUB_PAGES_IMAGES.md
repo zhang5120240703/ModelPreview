@@ -10,7 +10,11 @@
 4. 等待 Pages 发布，使用该设置页面的 Visit site 打开真正的网站地址。常见形式是 https://用户名.github.io/craft-photos/；此地址仅为形式示例，不代表已经发布。
 5. 打开首页列出的六张照片链接，确认显示图片。图片地址形如 https://用户名.github.io/craft-photos/images/front.jpg。github.com 的仓库文件页面不是图片直链。
 
-当前项目已准备发布目录，但未创建 GitHub 仓库、推送或启用 Pages，模板中也没有你的实际作品照片。
+用户已在 ModelPreview 仓库启用 Pages 并上传照片。当前发布目录位于仓库根目录的 github-pages-images，实际照片以用户提交为准。初始发布 ZIP 只含模板与目录规则，不含实际作品照片。
+
+如果在现有 Unity 仓库中发布，根目录的 .gitattributes 可能把 JPG/PNG 全部交给 Git LFS。发布模板的 images/.gitattributes 已针对该文件夹禁用 LFS，必须一并提交。已有 LFS 图片需要先执行 `git add github-pages-images/images`，再执行 `git add --renormalize github-pages-images/images`，然后提交、推送。GitHub Pages 不支持 LFS 图片；网页返回 131 字节的指针文本时，即使 HTTP 200 也不能显示照片。
+
+使用本项目现有仓库并从根目录发布时，图片目录是 `https://zhang5120240703.github.io/ModelPreview/github-pages-images/images/`。如果把发布目录放进 docs 子目录，且 Pages 仍从仓库根目录发布，网址也必须包含 `/docs/`。文件名区分大小写，底面统一为 bottom.jpg。
 
 ## 本地填写链接并测试
 
