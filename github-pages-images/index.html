@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>草编作品 · 六面照片</title>
+<style>body{font:16px/1.8 system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 20px;color:#29362f}code{overflow-wrap:anywhere}li{margin:16px 0}a{color:#365744}</style>
+<main>
+<h1>草编作品 · 六面照片</h1>
+<p>本页用于托管公开的测试照片。请先将同一件作品的六张照片放入 images 文件夹，并按下表命名。本模板不包含实际作品照片。</p>
+<p>上传后，将下方“图片目录地址”复制到电脑上的中文测试台，选择“使用 GitHub Pages 图片链接”，自动填写六面地址。先检查链接，再手动开始生成。</p>
+<p>图片目录地址：<code id="base">发布到 GitHub Pages 后显示</code></p>
+<ul>
+<li>正面：<a href="images/front.jpg">front.jpg</a></li>
+<li>背面：<a href="images/back.jpg">back.jpg</a></li>
+<li>左侧：<a href="images/left.jpg">left.jpg</a></li>
+<li>右侧：<a href="images/right.jpg">right.jpg</a></li>
+<li>顶面：<a href="images/top.jpg">top.jpg</a></li>
+<li>底面：<a href="images/bottom.jpg">bottom.jpg</a></li>
+</ul>
+<p>照片为 JPG/PNG，每张不超过 4 MiB，宽高均为 129–4999 像素。PNG 文件可保留 .png 后缀，在本地测试台修改对应链接。</p>
+<p>照片发布后公开可见；请只发布愿意公开的作品图片。API Key 和 backend/.env 仅保存在电脑上。</p>
+</main>
+<script>if(location.protocol==='https:'||location.protocol==='http:')document.getElementById('base').textContent=new URL('images/',location.href).href;</script>
+</html>

@@ -10,6 +10,8 @@
 
 腾讯混元（provider=hunyuan）接入限制每张最多 4 MiB、宽高均为 129–4999 像素。单图可在本地直接测试；2–6 张图需先配置云端能读取的公网 HTTPS 图片入口，否则在创建云端任务前返回 422。前端可通过 `/health` 获得限制及配置状态。视角字段目前用于混元，其他 Provider 保持自身图片顺序约定。
 
+固定照片可另用 GitHub Pages 图片直链：`POST /api/v1/image-links/check` 只检查链接；`POST /api/v1/reconstructions/from-urls` 接收 `{image_urls:[...],views:[...]}` 检查并创建混元任务，无需配置本机公网入口。图片限 HTTPS 的 *.github.io 直链，不跟随重定向，检查失败不创建任务。详见 [GitHub Pages 图片接入](GITHUB_PAGES_IMAGES.md)。原 multipart 接口不接受 URL 字段。
+
 ```powershell
 curl.exe -X POST http://127.0.0.1:8000/api/v1/reconstructions -F "images=@front.jpg" -F "images=@back.jpg" -F "views=front" -F "views=back"
 ```
@@ -58,7 +60,7 @@ HTTP 错误主体通常为 `{"detail":"说明"}`；参数结构错误也可能�
 | 404 | 任务不存在或成功任务文件缺失 |
 | 409 | 模型尚未成功生成，包括失败任务 |
 
-`GET /health`：返回 `status`、`provider`、`provider_ready`、`min_images`、`max_images`、`max_image_mb`、`image_order`，以及混元的 `model`、`enable_pbr`、`face_count`、`public_images_configured`。密钥不返回；`provider_ready` 仅表示本地已填写，未向腾讯校验有效性。`public_images_configured` 仅表示 URL 形式符合公网 HTTPS 要求，不证明外网可达。该接口不代表云平台连通或余额足够。
+`GET /health`：返回 `status`、`provider`、`provider_ready`、`min_images`、`max_images`、`max_image_mb`、`image_order`，以及混元的 `model`、`enable_pbr`、`face_count`、`public_images_configured`、`public_image_links_supported`。密钥不返回；`provider_ready` 仅表示本地已填写，未向腾讯校验有效性。`public_images_configured` 仅表示本机临时图片入口 URL 形式符合公网 HTTPS 要求，不证明外网可达；它为 false 时仍可通过独立的 from-urls 接口使用 Pages 照片。该接口不代表云平台连通或余额足够。
 
 混元多图内部使用 `GET /api/v1/reconstructions/{task_id}/images/{image_index}?token=...` 提供临时原图。服务端创建不可猜测的任务令牌，任务结束或过期后失效；客户端无需调用或构造此地址。
 

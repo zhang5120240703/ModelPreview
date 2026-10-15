@@ -50,6 +50,8 @@ GLB 先下载到 model.part，校验 GLB 2.0 头、JSON 和自包含要求后，
 
 多图的图片链接仅在任务排队/执行时有效，且有超时。默认本地地址不能被腾讯读取，会在提交前拦截。此功能不自动创建公网隧道，也不改变付费接口的访问控制要求。
 
+固定测试照片也可发布到 GitHub Pages，在本地测试台切换到“使用 GitHub Pages 图片链接”。新增检查接口 `/api/v1/image-links/check` 不创建任务；创建接口 `/api/v1/reconstructions/from-urls` 校验图片后保存本地副本和原始 URL，混元直接读取这些 Pages URL，因此不要求本机公网入口。仅允许 HTTPS 的用户名.github.io 图片地址，不跟随重定向，不发送 API Key，单图体积与像素限制不变。步骤及发布模板见 [GitHub Pages 图片接入](../docs/GITHUB_PAGES_IMAGES.md)。
+
 ## Meshy
 
 以 2026-10-15 查阅的 [官方 Multi-Image to 3D API](https://docs.meshy.ai/en/api/multi-image-to-3d) 为依据：POST `/openapi/v1/multi-image-to-3d`，通过 `image_urls` 提交 1–4 张图片的 data URI；保存 `result`，GET 同路径 `/{id}` 查询 `status` / `progress` / `model_urls.glb`。

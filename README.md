@@ -29,6 +29,8 @@
 | `docs/APP_INTEGRATION.md` | Unity as a Library 与其他 APP 技术栈接入 |
 | `docs/VALIDATION.md` | 实际验证记录与尚未验证项 |
 | `docs/HUNYUAN_SETUP.md` | 腾讯官方 TokenHub 密钥配置、单图与多视图接入 |
+| `docs/GITHUB_PAGES_IMAGES.md` | 用 GitHub Pages 托管六面照片，本地后端直接使用公开图片链接 |
+| `github-pages-images` | 可上传到照片仓库的 Pages 发布模板，不含密钥和实际作品照片 |
 
 ## 验证
 
