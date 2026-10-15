@@ -1,0 +1,5 @@
+# GitHub Pages must receive actual image bytes instead of Git LFS pointers.
+# Override the Unity project's global image LFS rules only in this folder.
+*.jpg  -filter -diff -merge -text
+*.jpeg -filter -diff -merge -text
+*.png  -filter -diff -merge -text
