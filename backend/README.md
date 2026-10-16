@@ -27,6 +27,12 @@ Copy-Item .env.example .env
 | HUNYUAN_FACE_COUNT | 留空，使用平台默认；如需覆盖允许 3000–1500000，可能影响计费 |
 | HUNYUAN_IMAGE_BASE_URL | 多视图的公网 HTTPS 图片入口；留空时尝试 PUBLIC_BASE_URL，单图不需要 |
 | HUNYUAN_MODEL_DOWNLOAD_HOSTS | hunyuan-prod-1258344699.cos.ap-guangzhou.tencentcos.cn；下载精确主机白名单 |
+| GITHUB_UPLOAD_ENABLED | false；配置后设 true，从电脑选图自动公开发布 |
+| GITHUB_TOKEN | GitHub 细粒度 Token，仅照片仓库 Contents 读写；仅服务端保存 |
+| GITHUB_REPOSITORY / GITHUB_BRANCH | 用户名/仓库名 与 Pages 发布分支，默认分支 main |
+| GITHUB_PAGES_BASE_URL | 已启用的 HTTPS Pages 网站根地址 |
+| GITHUB_UPLOAD_PATH | github-pages-images/uploads；仓库内上传目录，须位于 Pages 发布源中 |
+| GITHUB_PUBLISH_TIMEOUT_SECONDS / GITHUB_PUBLISH_POLL_SECONDS | 1200 / 15；图片上传和发布总等待上限 / 图片检查间隔 |
 | POLL_INTERVAL_SECONDS | 5；后端查询云端任务的间隔 |
 | TASK_TIMEOUT_SECONDS | 1800；每次 worker 执行任务的超时 |
 | MAX_IMAGE_MB | 通用默认 10 / 张；混元接入额外限制最多 4 MiB / 张。混元和 Mock 最多六张，Meshy/fal 最多四张 |
@@ -41,6 +47,10 @@ Copy-Item .env.example .env
 worker 提交前写 processing，提交成功后立即保存远程 ID。重启会恢复 queued，并继续查询有 remote_id 的 processing 任务；processing 但没有 remote_id 时标记失败，要求先查平台，防止不确定提交重复扣费。切换 Provider 后旧任务不会自动发给新 Provider。重启后超时计时重新开始，这是 MVP 限制。
 
 GLB 先下载到 model.part，校验 GLB 2.0 头、JSON 和自包含要求后，原子替换为 model.glb，最后标记 succeeded。不是完整的 glTF 语义验证器；Unity 加载时仍处理资源或几何错误。下载不向素材服务器发送 Key，不跟随跳转，不接受非 HTTPS 或白名单外主机。若平台改变素材域名，先核对官方结果再更改白名单。
+
+GitHub 自动上传见 [配置与使用](../docs/GITHUB_AUTO_UPLOAD.md)。每组照片先上传 Git blobs，再以现有 base_tree 创建追加树、单个提交，非强制更新分支；冲突时重新基于最新分支追加，不覆盖其他文件。每任务独立路径并带取消 LFS 规则。读取 Pages 图片、核对本地 SHA-256 后才调用混元。GitHub Token 只发给固定 api.github.com，图片请求不带 GitHub 或混元 Key。
+
+SQLite 启动时会为旧表迁移 stage/status_message 两列。上传/等待发布阶段可按任务 manifest 恢复；进入 submitting 但缺云端编号时仍按不确定提交失败处理，防止重复付费。Pages 发布上限与建模上限分开计时，浏览器等待上限包含两者。
 
 ## 腾讯混元 TokenHub
 

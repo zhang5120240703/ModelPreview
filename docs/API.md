@@ -10,6 +10,8 @@
 
 腾讯混元（provider=hunyuan）接入限制每张最多 4 MiB、宽高均为 129–4999 像素。单图可在本地直接测试；2–6 张图需先配置云端能读取的公网 HTTPS 图片入口，否则在创建云端任务前返回 422。前端可通过 `/health` 获得限制及配置状态。视角字段目前用于混元，其他 Provider 保持自身图片顺序约定。
 
+启用并配置 `GITHUB_UPLOAD_ENABLED=true` 后，同一个 multipart 上传接口可直接接收 1–6 张本地照片。立即返回 202，后台自动上传公开照片仓库、等待 Pages 发布并核对图片，再提交混元，不再要求本机有公网入口。GitHub 配置不完整时返回 503。详见 [自动上传](GITHUB_AUTO_UPLOAD.md)。
+
 固定照片可另用 GitHub Pages 图片直链：`POST /api/v1/image-links/check` 只检查链接；`POST /api/v1/reconstructions/from-urls` 接收 `{image_urls:[...],views:[...]}` 检查并创建混元任务，无需配置本机公网入口。图片限 HTTPS 的 *.github.io 直链，不跟随重定向，检查失败不创建任务。详见 [GitHub Pages 图片接入](GITHUB_PAGES_IMAGES.md)。原 multipart 接口不接受 URL 字段。
 
 ```powershell
@@ -39,8 +41,12 @@ task_id 是不透明字符串，不要在客户端推断结构。status_url 是�
 | model_url | succeeded 后的绝对 URL，其他状态 null；下载来自可配置 PUBLIC_BASE_URL |
 | error | failed 后的原因文本，其他状态 null |
 | provider / is_mock | 标明是否为模拟结果；客户端必须保留 Mock 提示 |
+| stage | queued / uploading_images / waiting_images / submitting / generating / downloading / completed / failed；上传与等待阶段未调用混元 |
+| status_message | 当前阶段的中文说明，可显示给用户；错误原因仍以 error 为准 |
 
 每 3–5 秒轮询一次，成功/失败后停止，APP 进入后台时暂停。网络错误显示可重试状态；不自动重新上传。Unity 等待上限 1900 秒，超时后可以用原 task_id 继续跟踪。
+
+中文测试页使用 `/health` 的 task_wait_seconds，包含 GitHub 发布与云端建模两段上限。关闭网页后可使用原 task_id 恢复查询，不创建新任务。模型 succeeded 只说明 GLB 文件已保存，客户端仍需检查视觉质量。
 
 ## 下载模型
 
@@ -63,6 +69,8 @@ HTTP 错误主体通常为 `{"detail":"说明"}`；参数结构错误也可能�
 `GET /health`：返回 `status`、`provider`、`provider_ready`、`min_images`、`max_images`、`max_image_mb`、`image_order`，以及混元的 `model`、`enable_pbr`、`face_count`、`public_images_configured`、`public_image_links_supported`。密钥不返回；`provider_ready` 仅表示本地已填写，未向腾讯校验有效性。`public_images_configured` 仅表示本机临时图片入口 URL 形式符合公网 HTTPS 要求，不证明外网可达；它为 false 时仍可通过独立的 from-urls 接口使用 Pages 照片。该接口不代表云平台连通或余额足够。
 
 混元多图内部使用 `GET /api/v1/reconstructions/{task_id}/images/{image_index}?token=...` 提供临时原图。服务端创建不可猜测的任务令牌，任务结束或过期后失效；客户端无需调用或构造此地址。
+
+`/health` 还返回 github_upload_enabled、github_upload_ready、github_repository、github_publish_timeout_seconds、task_wait_seconds；不返回 Token。ready 仅表示本地配置存在，实际仓库权限和发布状态在任务执行时检查。
 
 ## 网络地址
 

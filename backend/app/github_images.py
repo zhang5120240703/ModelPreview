@@ -6,6 +6,10 @@ from urllib.parse import unquote, urlparse
 import httpx
 
 
+class ImageLinkNotReady(ValueError):
+    """A publication/network condition that can be polled without creating a paid task."""
+
+
 def validate_github_image_url(url):
     if not isinstance(url,str) or len(url)>2048 or any(c.isspace() for c in url):
         raise ValueError('图片链接无效，请填写完整的 GitHub Pages HTTPS 图片地址')
@@ -35,7 +39,8 @@ class GitHubImages:
             async def read(url,suffix):
                 async with client.stream('GET',url) as response:
                     if response.status_code!=200:
-                        raise ValueError(f'GitHub Pages 图片读取失败（HTTP {response.status_code}），请确认已发布且链接直接打开图片；本次未创建任务')
+                        error=ImageLinkNotReady if response.status_code in (404,429,500,502,503,504) else ValueError
+                        raise error(f'GitHub Pages 图片读取失败（HTTP {response.status_code}），请确认已发布且链接直接打开图片；本次未创建任务')
                     mime=response.headers.get('content-type','').split(';',1)[0].strip().lower()
                     if mime!=('image/png' if suffix=='.png' else 'image/jpeg'):
                         raise ValueError('图片链接返回的不是对应图片格式，可能是网页、404 页面或未发布的文件')
@@ -54,4 +59,4 @@ class GitHubImages:
                     if isinstance(result,Exception): raise result
                 return results
             except (httpx.HTTPError,TimeoutError):
-                raise ValueError('无法连接 GitHub Pages 图片，请检查网络和发布状态；本次未创建任务') from None
+                raise ImageLinkNotReady('无法连接 GitHub Pages 图片，请检查网络和发布状态；本次未创建任务') from None

@@ -15,13 +15,19 @@ class TaskStore:
                 task_id TEXT PRIMARY KEY, status TEXT NOT NULL, progress REAL,
                 provider TEXT NOT NULL, remote_id TEXT, images TEXT NOT NULL,
                 error TEXT, created_at TEXT NOT NULL)''')
+            columns={row[1] for row in db.execute('PRAGMA table_info(tasks)')}
+            if 'stage' not in columns:
+                db.execute("ALTER TABLE tasks ADD COLUMN stage TEXT NOT NULL DEFAULT 'queued'")
+                db.execute("UPDATE tasks SET stage=CASE WHEN status='succeeded' THEN 'completed' WHEN status='failed' THEN 'failed' WHEN remote_id IS NOT NULL THEN 'generating' ELSE 'queued' END")
+            if 'status_message' not in columns:
+                db.execute('ALTER TABLE tasks ADD COLUMN status_message TEXT')
 
     def connect(self):
         return sqlite3.connect(self.database, timeout=10)
 
     def create(self, task_id, provider, images):
         with self.connect() as db:
-            db.execute('INSERT INTO tasks VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            db.execute('INSERT INTO tasks (task_id,status,progress,provider,remote_id,images,error,created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                        (task_id, 'queued', None, provider, None, json.dumps(images),
                         None, datetime.now(timezone.utc).isoformat()))
 
@@ -32,7 +38,7 @@ class TaskStore:
             return dict(row) if row else None
 
     def update(self, task_id, **fields):
-        assert set(fields) <= {'status', 'progress', 'remote_id', 'error'}
+        assert set(fields) <= {'status', 'progress', 'remote_id', 'error', 'stage', 'status_message'}
         with self.connect() as db:
             db.execute('UPDATE tasks SET ' + ','.join(f'{k}=?' for k in fields) +
                        ' WHERE task_id=?', (*fields.values(), task_id))

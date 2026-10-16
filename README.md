@@ -30,6 +30,7 @@
 | `docs/VALIDATION.md` | 实际验证记录与尚未验证项 |
 | `docs/HUNYUAN_SETUP.md` | 腾讯官方 TokenHub 密钥配置、单图与多视图接入 |
 | `docs/GITHUB_PAGES_IMAGES.md` | 用 GitHub Pages 托管六面照片，本地后端直接使用公开图片链接 |
+| `docs/GITHUB_AUTO_UPLOAD.md` | 网页实时选图、自动上传 GitHub、等待 Pages 发布后提交混元 |
 | `github-pages-images` | 可上传到照片仓库的 Pages 发布模板，不含密钥和实际作品照片 |
 
 ## 验证
@@ -39,6 +40,8 @@
 ## 切换真实 AI
 
 腾讯混元：在项目根目录运行 `./scripts/configure-hunyuan.ps1`，按提示粘贴 **TokenHub API Key**（输入不回显），然后重启后端。打开中文测试台，先上传一张正面照片。默认使用 `hy-3d-3.1`、带颜色纹理、关闭额外 PBR；多视图需要配置公网 HTTPS 图片入口，详见 [混元接入说明](docs/HUNYUAN_SETUP.md)。
+
+现在也支持从电脑选图后自动发布到 GitHub Pages，再自动提交混元。运行 `./scripts/configure-github.ps1` 配置照片仓库、Pages 地址和该仓库 Contents 读写 Token，重启后即可选图生成；无需手动命名照片或复制链接。图片公开发布，默认最长等待 20 分钟，发布失败不提交混元。详见 [自动上传说明](docs/GITHUB_AUTO_UPLOAD.md)。
 
 Meshy：在 `backend/.env` 设置 `PROVIDER=meshy`、`MESHY_API_KEY` 和可被客户端访问的 `PUBLIC_BASE_URL`，重启服务。Key 只保存在后端，不传给 Unity。真实任务会使用平台额度；创建任务不自动重试，以免重复付费。切回免费测试时设置 `PROVIDER=mock` 并重启。
 

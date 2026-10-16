@@ -20,6 +20,7 @@ from .service import ReconstructionWorker
 from .store import TaskStore
 from .image_sources import ImageSources, VIEW_ORDER, VIEW_LABELS, validate_views
 from .github_images import GitHubImages
+from .github_publisher import GitHubPublisher, MANIFEST, make_manifest, save_json
 
 
 class PublicImagesRequest(BaseModel):
@@ -37,6 +38,8 @@ class TaskResponse(BaseModel):
     provider: str = Field(title='建模服务')
     is_mock: bool = Field(title='是否为模拟测试结果')
     status_url: str = Field(title='任务查询地址')
+    stage: str = Field(default='queued',title='当前处理阶段')
+    status_message: str | None = Field(default=None,title='阶段说明')
 
 
 class BodyLimit:
@@ -91,11 +94,14 @@ def create_app(settings=None):
     @asynccontextmanager
     async def lifespan(app):
         provider = make_provider(settings)
-        worker = asyncio.create_task(ReconstructionWorker(settings,store,provider).run())
-        yield
-        worker.cancel()
-        with suppress(asyncio.CancelledError): await worker
-        await provider.close()
+        publisher=GitHubPublisher(settings) if settings.provider=='hunyuan' and settings.github_upload_ready else None
+        worker = asyncio.create_task(ReconstructionWorker(settings,store,provider,publisher).run())
+        try:yield
+        finally:
+            worker.cancel()
+            with suppress(asyncio.CancelledError): await worker
+            await provider.close()
+            if publisher is not None:await publisher.close()
 
     app = FastAPI(title='草编工艺品三维重建接口',version='1.0.0',lifespan=lifespan,
                   description='上传多角度照片、查询任务进度并下载 GLB 模型。默认使用免费模拟测试模式。',
@@ -135,6 +141,7 @@ def create_app(settings=None):
         task_id = row['task_id']
         return TaskResponse(task_id=task_id,status=row['status'],progress=row['progress'],error=row['error'],
             provider=row['provider'],is_mock=row['provider']=='mock',
+            stage=row['stage'],status_message=row['status_message'],
             status_url=f'/api/v1/reconstructions/{task_id}',
             model_url=f'{settings.base_url}/api/v1/models/{task_id}/file' if row['status']=='succeeded' else None)
 
@@ -146,6 +153,11 @@ def create_app(settings=None):
                 'image_order':['正面','左侧','背面','右侧'] if settings.provider=='fal_tripo' else [VIEW_LABELS[v] for v in VIEW_ORDER[:settings.max_images]],
                 'public_images_configured':image_sources.configured if settings.provider=='hunyuan' else None,
                 'public_image_links_supported':settings.provider=='hunyuan',
+                'github_upload_enabled':settings.github_upload_enabled,
+                'github_upload_ready':settings.github_upload_ready,
+                'github_repository':settings.github_repository or None,
+                'github_publish_timeout_seconds':settings.github_publish_timeout_seconds,
+                'task_wait_seconds':settings.task_wait_seconds,
                 'model':settings.hunyuan_model if settings.provider=='hunyuan' else None,
                 'enable_pbr':settings.hunyuan_enable_pbr if settings.provider=='hunyuan' else None,
                 'face_count':settings.hunyuan_face_count if settings.provider=='hunyuan' else None}
@@ -165,6 +177,9 @@ def create_app(settings=None):
             raise HTTPException(503,'请先在 backend/.env 填写 FAL_KEY 并重启后端；本次未创建付费任务')
         if settings.provider == 'hunyuan' and not settings.provider_ready:
             raise HTTPException(503,'请先在 backend/.env 填写 HUNYUAN_API_KEY 并重启后端；本次未创建付费任务')
+        auto_github=settings.provider=='hunyuan' and settings.github_upload_enabled
+        if auto_github and not settings.github_upload_ready:
+            raise HTTPException(503,'自动上传 GitHub 尚未配置完整，请运行 scripts/configure-github.ps1 后重启；本次未创建任务')
         task_id = uuid4().hex
         folder = settings.data_dir / task_id
         try:
@@ -183,7 +198,7 @@ def create_app(settings=None):
                 except ValueError as exc: raise HTTPException(422,str(exc))
                 if any(view not in VIEW_ORDER[:settings.max_images] for view in views):
                     raise HTTPException(422,'当前建模服务仅支持正面、背面、左侧、右侧视角')
-                if settings.provider == 'hunyuan' and len(files)>1:
+                if settings.provider == 'hunyuan' and len(files)>1 and not auto_github:
                     try: image_sources.require_public_url()
                     except ValueError as exc: raise HTTPException(422,str(exc))
                 folder.mkdir()
@@ -203,6 +218,10 @@ def create_app(settings=None):
                     await asyncio.to_thread((folder/name).write_bytes,data)
                     paths.append(name)
                 (folder/'views.json').write_text(json.dumps(views),encoding='utf-8')
+                if auto_github:
+                    try:manifest=make_manifest(settings,task_id,paths,views)
+                    except ValueError as exc:raise HTTPException(422,str(exc)) from None
+                    save_json(folder/MANIFEST,manifest)
                 store.create(task_id,settings.provider,paths)
         except BaseException:
             if folder.exists(): shutil.rmtree(folder)

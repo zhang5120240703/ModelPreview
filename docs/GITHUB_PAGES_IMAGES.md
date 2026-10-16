@@ -1,5 +1,7 @@
 # 用 GitHub Pages 照片进行多视图测试
 
+现在推荐直接从电脑选图并自动发布，见 [实时上传配置](GITHUB_AUTO_UPLOAD.md)。下文保留手动发布与图片链接模式。
+
 方案：GitHub Pages 托管公开照片；电脑上的 Python 后端保留 Key、调用混元并保存 GLB。无需先把后端部署到公网，也无需配置 HUNYUAN_IMAGE_BASE_URL。测试页仍打开 http://127.0.0.1:8000/docs。
 
 ## 一次性开通 Pages

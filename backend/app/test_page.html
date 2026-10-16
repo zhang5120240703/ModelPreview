@@ -31,7 +31,7 @@
 <main>
   <div class="eyebrow">草编工艺品数字化 · 本地联调</div>
   <h1>三维模型中文测试台</h1>
-  <p>上传同一件作品的不同角度照片，创建任务并获取模型地址，再交给 Unity 预览。</p>
+  <p id="upload-intro">上传同一件作品的不同角度照片，创建任务并获取模型地址，再交给 Unity 预览。</p>
   <span class="badge" id="provider">正在检查服务……</span>
   <p class="note" id="provider-help" role="status"></p>
   <div class="grid">
@@ -42,11 +42,13 @@
         <select id="source-mode"><option value="local">从电脑选择照片</option><option value="github">使用 GitHub Pages 图片链接</option></select>
       </div>
       <div id="local-source">
-      <label for="images">选择 1–__MAX_IMAGES__ 张照片</label>
+      <label id="image-label" for="images">选择 1–__MAX_IMAGES__ 张照片</label>
       <input id="images" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" multiple hidden aria-describedby="image-help">
       <button id="choose-images" type="button" class="secondary">选择照片</button>
       <span id="file-count" class="note">尚未选择照片</span>
       <p class="note" id="image-help">支持 JPG、JPEG、PNG，每张最多 __MAX_IMAGE_MB__ MB。选择后请为照片标记拍摄视角。</p>
+      <p class="note" id="upload-route" role="status"></p>
+      <p class="note" id="capture-help" hidden>生成前请检查：主体完整清晰，背景简洁，尽量不要用手拿住物体；主图不要让背景和手占据大部分画面，各张照片与视角标注保持一致。上传成功不保证还原质量。</p>
       <div id="photos" aria-label="已选择的照片"></div>
       </div>
       <div id="github-source" hidden>
@@ -94,12 +96,14 @@
 (() => {
   const $ = id => document.getElementById(id);
   const names = {queued:'排队中',processing:'正在生成模型',succeeded:'模型已生成',failed:'模型生成失败'};
+  const stageNames={uploading_images:'正在上传照片到 GitHub',waiting_images:'等待图片发布',submitting:'正在提交建模任务',generating:'正在生成模型',downloading:'正在下载模型'};
   const maxBytes = __MAX_IMAGE_MB__ * 1024 * 1024;
   const maxImages = __MAX_IMAGES__;
   const viewNames = {front:'正面',back:'背面',left:'左侧',right:'右侧',top:'顶面',bottom:'底面'};
   const defaultViews = ['front','back','left','right','top','bottom'].slice(0,maxImages);
   let timer = null, active = null, generation = 0, started = 0, previews = [], chosenViews = [];
-  let service = null, configured = false;
+  let service = null, configured = false, singleImageOnly = false;
+  const localImageLimit = () => singleImageOnly ? 1 : maxImages;
   for (const view of defaultViews) {
     const label=document.createElement('label'); label.htmlFor='link-'+view; label.textContent=viewNames[view]+'图片链接';
     const input=document.createElement('input'); input.id='link-'+view; input.type='url'; input.placeholder='https://用户名.github.io/仓库名/images/'+view+'.jpg';
@@ -135,13 +139,13 @@
     } finally { clearTimeout(timeout); if (active === controller) active = null; }
   }
   function display(task) {
-    $('state').textContent = names[task.status] || '未知任务状态';
+    $('state').textContent = (task.status==='processing' && stageNames[task.stage]) || names[task.status] || '未知任务状态';
     $('task-id').value = task.task_id || ''; $('lookup').value = task.task_id || '';
     $('model-url').value = task.model_url || '';
     $('copy-id').disabled = !task.task_id; $('copy-url').disabled = !task.model_url;
     $('status-note').textContent = task.is_mock
       ? '当前是模拟测试任务，结果为测试立方体，不代表真实 AI 重建质量。'
-      : '当前是 AI 建模任务，实际生成时间与平台排队情况有关。';
+      : task.status_message || '当前是 AI 建模任务，实际生成时间与平台排队情况有关。';
     $('mock-note').hidden = !task.is_mock;
     $('progress').hidden = typeof task.progress !== 'number';
     if (typeof task.progress === 'number') $('progress').value = task.progress;
@@ -154,8 +158,8 @@
   }
   async function poll(id, version) {
     if (version !== generation) return;
-    if (Date.now()-started > 1900000) {
-      stop(); error('等待已超过 1900 秒，可使用原任务编号继续查询。'); return;
+    if (Date.now()-started > (service?.task_wait_seconds || 1900)*1000) {
+      stop(); error('本次等待已超时，可使用原任务编号继续查询，无需重新上传。'); return;
     }
     try {
       const task = await request('/api/v1/reconstructions/' + encodeURIComponent(id));
@@ -204,8 +208,8 @@
   $('images').addEventListener('change', () => {
     $('file-count').textContent = $('images').files.length ? '已选择 ' + $('images').files.length + ' 张照片' : '尚未选择照片';
     previews.forEach(URL.revokeObjectURL); previews = []; $('photos').replaceChildren();
-    error($('images').files.length>maxImages ? '最多只能上传 ' + maxImages + ' 张照片，请重新选择。' : '');
-    const files = Array.from($('images').files).slice(0,maxImages);
+    error($('images').files.length>localImageLimit() ? '最多只能上传 ' + localImageLimit() + ' 张照片，请重新选择。' : '');
+    const files = Array.from($('images').files).slice(0,localImageLimit());
     chosenViews = defaultViews.slice(0,files.length);
     for (const [index,file] of files.entries()) {
       const card = document.createElement('div'); card.className = 'photo';
@@ -217,6 +221,7 @@
         const option = document.createElement('option'); option.value = view; option.textContent = viewNames[view]; select.append(option);
       }
       select.value = chosenViews[index]; select.addEventListener('change', () => { chosenViews[index] = select.value; });
+      select.hidden=singleImageOnly;
       card.append(select); $('photos').append(card);
     }
   });
@@ -232,9 +237,12 @@
       } catch(exception){failure(exception,version);} return;
     }
     const files = Array.from($('images').files);
-    if (files.length < (service?.min_images || 1) || files.length > maxImages) { error('请选择 ' + (service?.min_images || 1) + '–' + maxImages + ' 张照片。'); return; }
-    if (service?.provider === 'hunyuan' && files.length>1 && !service.public_images_configured) {
-      error('当前未配置公网 HTTPS 图片地址。请先上传一张正面图，或配置 HUNYUAN_IMAGE_BASE_URL 后重启后端。'); return;
+    if (files.length < (service?.min_images || 1) || files.length > localImageLimit()) { error(singleImageOnly ? '请选择一张清晰的正面照片。' : '请选择 ' + (service?.min_images || 1) + '–' + localImageLimit() + ' 张照片。'); return; }
+    if(service?.provider==='hunyuan' && service.github_upload_enabled && !service.github_upload_ready){
+      error('请先运行 scripts/configure-github.ps1 配置 GitHub 自动上传，重启后即可直接选图。');return;
+    }
+    if (service?.provider === 'hunyuan' && files.length>1 && !service.public_images_configured && !service.github_upload_ready) {
+      error('本地多图需要自动上传或公网入口。请运行 scripts/configure-github.ps1 配置自动发布到 GitHub。'); return;
     }
     if (new Set(chosenViews).size !== files.length || !chosenViews.includes('front')) {
       error('请为每张照片选择不同视角，并保留一张正面图。'); return;
@@ -275,11 +283,28 @@
       data.provider === 'meshy' ? 'Meshy · 真实 AI 建模模式' : '扩展服务模式';
     $('mock-note').hidden = data.provider !== 'mock';
     if (data.provider === 'hunyuan') {
+      singleImageOnly=!data.public_images_configured && !data.github_upload_ready;
+      $('capture-help').hidden=false;
+      if(data.github_upload_ready){
+        $('upload-route').textContent='自动上传已配置：选图后会将照片公开发布到 '+data.github_repository+' 的独立目录，等待 Pages 可读取后自动提交混元。图片发布最长等待 '+Math.round(data.github_publish_timeout_seconds/60)+' 分钟；发布阶段尚未提交混元。';
+        $('source-mode').options[0].textContent='从电脑选择照片（自动上传 GitHub）';
+      } else {
+        $('upload-route').textContent='实时选图自动上传尚未配置。请运行 scripts/configure-github.ps1，填写 GitHub 仓库、Pages 地址和 Token 后重启；Token 只保存在本机后端。';
+      }
       $('provider-help').textContent = configured
         ? '使用 TokenHub ' + data.model + '，带颜色纹理；PBR ' + (data.enable_pbr ? '已开启' : '未开启') +
-          '。开始生成将创建真实计费任务。' + (data.public_images_configured ? '本地上传的多图已配置公网图片入口，请确认腾讯可访问。' : '本地上传多图需公网入口；也可切换照片来源，使用 GitHub Pages 图片链接。')
+          '。开始生成将创建真实计费任务。' + (data.github_upload_ready ? '已启用选图后自动发布，无需手动复制链接。' : data.public_images_configured ? '本地上传的多图已配置公网图片入口，请确认腾讯可访问。' : '本地多图可配置 GitHub 自动上传；也支持手动填写 Pages 图片链接。')
         : '请在项目根目录运行 scripts/configure-hunyuan.ps1，隐藏输入并保存 Key，然后重启后端。密钥不要填到本网页。';
       $('image-help').textContent = '支持 JPG、JPEG、PNG，每张最多 __MAX_IMAGE_MB__ MB，宽高为 129–4999 像素。支持前后左右上下六个面，逐张标记正面、背面、左侧、右侧、顶面或底面。';
+      if(singleImageOnly){
+        $('source-options').hidden=true;
+        $('images').multiple=false;
+        $('image-label').textContent='选择一张正面照片';
+        $('upload-intro').textContent='上传一张清晰的正面照片，生成三维模型并交给 Unity 预览。';
+        $('upload-route').textContent='当前先使用单图生成，多图上传等服务器部署好后再接入。';
+        $('image-help').textContent='支持 JPG、JPEG、PNG，每张最多 __MAX_IMAGE_MB__ MB，宽高为 129–4999 像素。照片直接发送给混元，无需 GitHub 上传或公网图片链接。';
+        if(configured) $('provider-help').textContent='使用 TokenHub '+data.model+'，带颜色纹理；PBR '+(data.enable_pbr ? '已开启' : '未开启')+'。当前使用单图生成，开始生成会消耗腾讯账户额度。';
+      }
       $('status-note').textContent = '等待你手动提交照片。混元真实生成会消耗腾讯账户额度，当前尚未创建任务。';
     } else if (data.provider === 'mock') $('provider-help').textContent = '当前为免费模拟模式，结果是测试立方体。';
     busy(false);

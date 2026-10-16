@@ -6,7 +6,7 @@
 
 | 检查 | 实际结果 / 证据 |
 | --- | --- |
-| Python 自动化测试 | 68 passed（包含六图完整流程、顶底面映射、重复/非法视角、七张拒绝、其他 Provider 四张限制，以及 Pages URL 校验、无 Key 检查、下载异常、LFS 指针拦截及 URL 任务全流程）；见 test-results/backend-pytest.txt 与 backend.xml |
+| Python 自动化测试 | 91 passed（包含 GitHub 整组自动上传、分支冲突与重启恢复、发布等待和超时不提交混元，以及六图完整流程、顶底面映射、重复/非法视角、七张拒绝、其他 Provider 四张限制，以及 Pages URL 校验、无 Key 检查、下载异常、LFS 指针拦截及 URL 任务全流程）；见 test-results/backend-pytest.txt 与 backend.xml |
 | 真实 HTTP 服务 | uvicorn 在 127.0.0.1:8000 启动，smoke.py 上传、轮询并下载 2140 字节的自包含 GLB；响应见 ../samples/task.json |
 | Unity 脚本编译 | Unity 6.4 批处理编译成功，生成可打开的 GrassCraftPreview 场景 |
 | Unity PlayMode | 2 passed / 0 failed，见 test-results/unity-playmode.xml |
@@ -22,6 +22,7 @@
 | 混元真实单图任务 | 用户自行提交的任务 7e444447767d4671a8928a9e02647117 已 succeeded；GLB 已通过后端校验并保存，31893320 字节。本次检查未新增云端任务，未检查账单和重建视觉质量 |
 | GitHub Pages 链接入口 | 8002 隔离服务使用模拟图片和云端响应，验证六链接自动填写、检查不创建任务、创建后自动轮询成功，见 test-results/github-pages-simulated.png。未访问真实 Pages 照片或新增真实混元任务。发布模板和 ZIP 已准备，用户尚未开通 Pages |
 | Pages 实际图片故障 | 用户已开通 ModelPreview Pages。新提交 3959114d 尚在部署；新路径 front.jpg 为 404，旧 docs 路径的 front.jpg/botton.jpg 返回 HTTP 200 但实际是 131 字节 Git LFS 指针。已在本地为照片目录禁用 LFS，修正 bottom.jpg，并重新暂存六张实际 JPEG；尚未替用户提交和推送这次修复 |
+| 实时选图自动发布 | 2026-10-16：91 项后端测试通过；隔离 8002 浏览器实际选择六张合成 PNG，显示“等待图片发布”，随后自动完成模拟混元任务，见 test-results/github-auto-waiting.png。所有 GitHub、Pages、混元请求均模拟，未新增真实云端任务或真实照片提交。真实 GitHub Token 尚待用户配置 |
 
 Unity 验证使用 `Verification/UnityProject` 隔离副本，避免改动当前 Editor 场景。首次官方包缓存写入遭遇 EBADF，验证副本改用从 Unity 官方 registry 下载的相同 glTFast 6.15.1 包作为 embedded package；主工程仍使用 registry 依赖，之后已正常解析安装。隔离副本不属于交付源码，也不提交。
 
@@ -31,10 +32,12 @@ Unity 验证使用 `Verification/UnityProject` 隔离副本，避免改动当前
 
 ## 已实现、仍需人工/外部环境验证
 
+2026-10-16 用户决定暂缓多图，等待协作者部署服务器。当前混元未配置公网图片入口或 GitHub 自动上传时，中文测试页使用单图入口，隐藏多图链接选项；浏览器已确认文件选择器 multiple=false，见 test-results/single-image-mode.png。单图继续由本地后端传 Base64 给混元，无需公网图片链接。本次仅调整页面入口，未提交真实建模任务。
+
 - 鼠标/触屏输入路由与自动旋转已有实现；自动化验证了共享 Rotate/Zoom 逻辑，尚未进行真实手机手势和长时间交互流畅度测试。
 - 未执行 Android APK/AAB 构建、ARM64/IL2CPP 运行或低内存测试；adb devices 未发现设备。AndroidPlayer SDK/NDK/OpenJDK 目录存在。
 - Meshy Provider 已实现，**未提交任何真实云端 AI 任务**。需要服务器 MESHY_API_KEY 与额度，验证图片重建质量、实际模型扩展、素材下载域名和移动端资源开销。
-- 腾讯混元 TokenHub 已实现，默认 hy-3d-3.1；用户已配置密钥并完成一次真实单图生成。**六图真实生成、多视图公网可达性、真实草编重建视觉质量和腾讯 GLB 在 Unity 的实际表现仍未验证**。当前 public_images_configured=false，电脑直接上传多图仍会被拦截；Pages 链接模式无需这个配置，但需要用户先发布可访问的真实图片。
+- 腾讯混元 TokenHub 已实现，默认 hy-3d-3.1；用户已配置密钥并完成一次真实单图生成。用户之后自行完成了六图真实任务 fc6359708da24c2ab457b746a88aa4ba，30081220 字节 GLB 可在 Unity 加载，但输入含手部遮挡及视角不一致，生成质量不合格；未新增付费任务。实时选图自动发布功能已实现并通过模拟验证，真实 GitHub Token 尚待配置。真实草编重建质量仍需验证。
 - TripoProvider 仅为明确报“尚未接入”的扩展占位，没有伪装成可用服务。
 - Android 原生宿主、Unity as a Library 生命周期桥、Flutter/uni-app 桥与 WebView 查看器尚未开发，本次只提供稳定接入入口及说明。
 - 生产身份认证、任务所有权、持久队列和对象存储尚未实现，当前后端按单进程可信开发环境运行。
